@@ -10,6 +10,7 @@
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
+#include "nrf_delay.h"
 
 #include "buckler.h"
 #include "simple_ble.h"
@@ -33,10 +34,19 @@ static simple_ble_config_t ble_config = {
         .max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS),
 };
 
+float lux = 0;
+
 void light_timer_callback() {
     printf("Light timer fired!\n");
     // TODO: implement this function!
     // Use Simple BLE function to read light sensor and put data in advertisement
+    //int lux = i++;//(int)opt3004_read_result();
+    //lux += 0.5;
+    printf("\nLux: %f", lux);
+
+    //char* a = (char*)&lux;
+    unsigned char* b = (unsigned char*) &lux;
+    simple_ble_adv_manuf_data(b, sizeof(b));
 }
 
 /*******************************************************************************
@@ -80,7 +90,6 @@ int main(void) {
 
   printf("opt3004 initialized: %ld\n", error_code);
 
-
   // Setup BLE
   simple_ble_app = simple_ble_init(&ble_config);
 
@@ -94,7 +103,9 @@ int main(void) {
 
   while(1) {
     // Sleep while SoftDevice handles BLE
-    power_manage();
+    lux = opt3004_read_result();
+    nrf_delay_ms(100);
+    //power_manage();
   }
 }
 
