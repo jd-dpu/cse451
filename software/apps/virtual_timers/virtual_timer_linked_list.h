@@ -15,7 +15,11 @@ typedef struct node_t {
     // *** Additional timer fields ***
 
     // add your own variables here
-
+    uint32_t id; 
+    virtual_timer_callback_t* cbFunc;
+    uint32_t period; 
+    bool repeated;
+    
     // *** Do not edit below this line ***
 
     // timer value in microseconds. Used to sort the list. Must be initialized

@@ -20,7 +20,9 @@ void TIMER4_IRQHandler(void) {
    
   // Update CC[0] register from the remaining timer values
   checkTimers();
+  list_print();
 }
+uint32_t timer_check_duration = 100;
 
 void checkTimers(){
 	// update CC[0] value by looking at the linked list
@@ -35,6 +37,27 @@ void checkTimers(){
   3. Check if the timer vallue in this node is already reached. 
   In that case, call the callback function. The callback function can be called using the following command: timer_node->cbFunc();
   */
+  uint32_t start_time = read_timer();
+  printf("\nTimer interrupt: %d", start_time);//, duration: %d\n",start_time, timer_check_duration);
+  node_t * current_node = list_get_first();
+  if (current_node == NULL)
+    return;
+
+  //make sure we do not miss a virtual timer we will wait until the next timer is in the future
+  while(current_node->timer_value < read_timer() + timer_check_duration){ // add timers which may be REALLY close which we may miss
+    current_node = list_remove_first();
+    if(current_node->repeated){
+      current_node->timer_value = read_timer() + current_node->period;
+      list_insert_sorted(current_node); 
+    }
+    current_node->cbFunc();
+    current_node = list_get_first();
+    if(current_node == NULL)
+      return;
+  }
+  //update our time buffer for processing
+  timer_check_duration = read_timer() - start_time;
+  NRF_TIMER4->CC[0] = current_node->timer_value; // for overlapping timers
 }
 
 
@@ -42,7 +65,9 @@ void checkTimers(){
 uint32_t read_timer(void) {
   // Same function as the regular timers lab from CSE 351
   // Should return the value of the internal counter for TIMER4
-  return 0;
+  NRF_TIMER4->TASKS_CAPTURE[0]=1;
+  return NRF_TIMER4->CC[0];
+
 }
 
 // Initialize TIMER4 as a free running timer
@@ -53,6 +78,18 @@ uint32_t read_timer(void) {
 // 5) Start the timer
 void virtual_timer_init(void) {
   // Place your timer initialization code here
+  NRF_TIMER4->MODE = 0;  // timer mode
+  NRF_TIMER4->BITMODE = 3; //32 bit timer
+  NRF_TIMER4->PRESCALER  = 4; //prescale divide by 16 (2^4) for 1MHz
+
+  NRF_TIMER4->INTENSET |= (1<<16); //
+
+  NRF_TIMER4->TASKS_CLEAR = 1;
+  NRF_TIMER4->TASKS_START = 1;
+
+  NVIC_EnableIRQ(TIMER4_IRQn);
+  NVIC_SetPriority(TIMER4_IRQn, 0);
+
 }
 
 // Start a timer. This function is called for both one-shot and repeated timers
@@ -71,9 +108,25 @@ void virtual_timer_init(void) {
 // Follow the lab manual and start with simple cases first, building complexity and
 // testing it over time.
 static uint32_t timer_start(uint32_t microseconds, virtual_timer_callback_t cb, bool repeated) {
+  node_t * node = (node_t *) malloc(sizeof(node_t));
+  node->cbFunc = cb;
+  node->repeated = repeated;
+  node->period = microseconds;
+  node->timer_value = read_timer() + microseconds;
+  node->id = (int)&node;
 
-  
-  return 0;
+  __disable_irq();
+  list_insert_sorted(node);
+  __enable_irq();
+  node_t *first = list_get_first();
+
+  //if we are first then update timer
+  if (first->id == node->id)
+  {
+    NRF_TIMER4->CC[0] = first->timer_value;
+  }
+  // Return a unique timer ID. (hint: What is guaranteed unique about the timer you have created?)
+  return node->id;
 }
 
 // You do not need to modify this function

@@ -54,7 +54,12 @@ int main(void) {
   // Setup some timers and see what happens
   virtual_timer_start_repeated(1000000, &led0_toggle);
   virtual_timer_start_repeated(2000000, &led1_toggle);
+  virtual_timer_start_repeated(3000000, &led2_toggle);
+  // virtual_timer_start(1000000, &led0_toggle);
+  // virtual_timer_start(2000000, &led1_toggle);
+  // virtual_timer_start(3000000, &led2_toggle);
 
+  list_print();
   // loop forever
   while (1) {
     nrf_delay_ms(10);
