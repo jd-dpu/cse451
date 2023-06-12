@@ -32,7 +32,7 @@
 #include "kobukiUtilities.h"
 #include "lsm9ds1.h"
 
-extern KobukiSensors_t sensors;
+KobukiSensors_t sensors = {0};
 
 
 
@@ -40,8 +40,12 @@ uint16_t read_encoder(){
   return sensors.leftWheelEncoder;
 }
 
+
+
+
+
 float update_dist(float dist, uint16_t prev_encoder, bool is_forward){
-  const float CONVERSION = 0.00008529;
+  const float CONVERSION = 0.000677;
   uint16_t current_encoder = read_encoder();
   float result = 0.0;
   if (!is_forward){
@@ -51,14 +55,13 @@ float update_dist(float dist, uint16_t prev_encoder, bool is_forward){
   }
   if (current_encoder >= prev_encoder) {
     // normal case
-    result = (float)(current_encoder - prev_encoder);
+    result = (float)current_encoder - (float)prev_encoder;
   } else {
     // account for wrap
     result = (float)current_encoder + (0xFFFF - (float)prev_encoder);
   }
   result = result * CONVERSION;
-  printf("penc: %d, enc: %d, result: %f \n",prev_encoder, current_encoder, result);
-
+  printf("%f \n",result);
   if (result> 1.0 || result< -1.0){
     return dist;
   }else{

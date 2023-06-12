@@ -15,6 +15,18 @@
 
 #include "opt3004.h"
 #include "nrf_delay.h"
+#include "kobukiActuator.h"
+#include "kobukiSensorPoll.h"
+#include "kobukiSensorTypes.h"
+#include "kobukiUtilities.h"
+#include "lsm9ds1.h"
+#include "helper_funcs.h"
+
+extern KobukiSensors_t sensors;
+
+// I2C manager
+NRF_TWI_MNGR_DEF(twi_mngr_instance, 5, 0);
+
 
 // Create a timer
 APP_TIMER_DEF(light_timer);
@@ -22,7 +34,19 @@ APP_TIMER_DEF(light_timer);
 // I2C manager
 NRF_TWI_MNGR_DEF(twi_mngr_instance, 5, 0);
 
-bool sample_light = false;
+float dist_current=0.0f;
+
+float distance_measure(uint16_t encoder)
+{
+  const float CONVERSION = 0.000677; // 2*pi/65535 * Wheel_dia
+  uint16_t cur_encoder = sensors.leftWheelEncoder;
+
+  float updated_dist = cur_encoder - encoder;
+
+  // printf("Delta Encoder -- %d \n",update_dist);
+
+  return (float) updated_dist * CONVERSION; 
+}
 
 // Intervals for advertising and connections
 static simple_ble_config_t ble_config = {
@@ -35,26 +59,22 @@ static simple_ble_config_t ble_config = {
         .max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS),
 };
 
-static simple_ble_service_t display_service = {{
+static simple_ble_service_t accel_service = {{
     .uuid128 = {0x70,0x6C,0x98,0x41,0xCE,0x43,0x14,0xA9,
                 0xB5,0x4D,0x22,0x2B,0x10,0x89,0xE6,0x32}
 }};
 
-static simple_ble_char_t display_char = {.uuid16 = 0x8911};
-static char display_data[32] = {0};
+static simple_ble_char_t accel_char = {.uuid16 = 0x8911};
+static float accel_value = 0;
 
 //de97aeee-0e7e-4720-8038-4dc47aa9562f
-static simple_ble_service_t light_service = {{
+static simple_ble_service_t gyro_service = {{
     .uuid128 = {0x2f,0x56,0xa9,0x7a,0xc4,0x4d,0x38,0x80,
                 0x20,0x47,0x7e,0x0e,0xee,0xae,0x97,0xde}
 }};
 
-static simple_ble_char_t light_char = {.uuid16 = 0xaeef};
-static float light_value = 0;
-
-void light_timer_callback() {
-    sample_light = true;
-}
+static simple_ble_char_t gyro_char = {.uuid16 = 0xaeef};
+static float gyro_value = 0;
 
 
 /*******************************************************************************
@@ -65,11 +85,6 @@ simple_ble_app_t* simple_ble_app;
 
 void ble_evt_write(ble_evt_t const* p_ble_evt) {
      // Implement the display action
-     
-      if (simple_ble_is_char_event(p_ble_evt, &display_char)) {
-        printf("Got write to display characteristic!\n");
-        printf("\nupdating display data to: %s\n", display_data);
-      }
     }
 
 
@@ -125,6 +140,7 @@ int main(void) {
   // Setup BLE
   simple_ble_app = simple_ble_init(&ble_config);
 
+
   // Display Service 
   simple_ble_add_service(&display_service);
 
@@ -152,7 +168,6 @@ int main(void) {
        // first, read the sensor value
        // need a simple_ble notify characteristic action here
 
-      sample_light = false;
     }
     nrf_delay_ms(2000);
     light_value = (float)opt3004_read_result();

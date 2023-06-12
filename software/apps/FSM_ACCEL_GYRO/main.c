@@ -109,6 +109,22 @@ void display_accel_data()
     display_write(buf, 1);
 }
 
+void display_gyro_data()
+{
+    lsm9ds1_measurement_t gyr_measurement = lsm9ds1_read_gyro_integration();
+
+    printf("                      X-Axis\t    Y-Axis\t    Z-Axis\n");
+    printf("                  ----------\t----------\t----------\n");
+    printf("Angle  (degrees): %10.3f\t%10.3f\t%10.3f\n", gyr_measurement.x_axis, gyr_measurement.y_axis, gyr_measurement.z_axis);
+
+    return;
+    char buf[16] = {0};
+    snprintf(buf, 16, "gyro (x,y,z)");
+    display_write(buf, 0);
+    snprintf(buf, 16, "%2.1f,%2.1f,%2.1f", gyr_measurement.x_axis, gyr_measurement.y_axis, gyr_measurement.z_axis);
+    display_write(buf, 1);
+}
+
 void clear_display()
 {
     return;
@@ -134,8 +150,10 @@ int main(void) {
   // initialize the state variable
 
   current_state = INIT; 
-  
+  bool unpressed = true;
+ 
   // loop forever, running state machine
+  print_state();
   while (1) {
     // delay before continuing
     // Note: removing this delay will make responses quicker, but will result
@@ -149,23 +167,42 @@ int main(void) {
         current_state = OFF;
         print_state();
         break;
-      case ON:
-        gpio_set(BUCKLER_LED0);
-        display_accel_data();        
-        if (gpio_read(BUCKLER_BUTTON0))
-          {
-            current_state = OFF;            
-            print_state();
-          }
-        break;
       case OFF:
-        gpio_clear(BUCKLER_LED0);
-        clear_display();
-        if (!gpio_read(BUCKLER_BUTTON0))
-          {
-            current_state = ON;          
+        gpio_set(BUCKLER_LED0);
+        
+        if (!gpio_read(BUCKLER_BUTTON0)){
+          if(unpressed){
+            current_state = ACCEL;
+            unpressed = false;
             print_state();
+          }        
+        }else
+          unpressed = true;
+        break;
+      case ACCEL:
+        display_accel_data();
+        if (!gpio_read(BUCKLER_BUTTON0))
+        {
+          if(unpressed){
+          current_state = GYRO;
+          unpressed = false;
+          print_state();
           }
+        }else
+          unpressed = true;
+
+        break;
+      case GYRO:
+        display_gyro_data();
+        if (!gpio_read(BUCKLER_BUTTON0))
+        {
+          if(unpressed){
+          current_state = OFF;
+          unpressed = false;
+          print_state();
+          }
+        }else
+          unpressed = true;
         break;
       default:
         current_state = OFF;

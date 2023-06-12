@@ -76,12 +76,12 @@ int main(void) {
   bool unpressed = true;
  
   // loop forever, running state machine
+  print_state();
   while (1) {
     // delay before continuing
     // Note: removing this delay will make responses quicker, but will result
     //  in printf's in this loop breaking JTAG
     nrf_delay_ms(50);
-    print_state();
 
     // iterate statechart
     switch(current_state){
@@ -96,6 +96,8 @@ int main(void) {
           if(unpressed){
             current_state = BLINK;
             unpressed = false;
+            print_state();
+
           }
         }else
           unpressed = true;            
@@ -107,6 +109,7 @@ int main(void) {
           if(unpressed){
             current_state = ON;
             unpressed = false;
+          print_state();
           }        
         }else
           unpressed = true;
@@ -121,6 +124,7 @@ int main(void) {
         {
           current_state = OFF;
           unpressed = false;
+          print_state();
         }else
           unpressed = true;
         break;

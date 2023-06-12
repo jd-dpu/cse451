@@ -37,14 +37,11 @@ static simple_ble_config_t ble_config = {
 float lux = 0;
 
 void light_timer_callback() {
-    printf("Light timer fired!\n");
+    printf("\nLight timer fired!");
     // TODO: implement this function!
     // Use Simple BLE function to read light sensor and put data in advertisement
-    //int lux = i++;//(int)opt3004_read_result();
-    //lux += 0.5;
     printf("\nLux: %f", lux);
 
-    //char* a = (char*)&lux;
     unsigned char* b = (unsigned char*) &lux;
     simple_ble_adv_manuf_data(b, sizeof(b));
 }
@@ -103,7 +100,7 @@ int main(void) {
 
   while(1) {
     // Sleep while SoftDevice handles BLE
-    lux = opt3004_read_result();
+    lux = (float)opt3004_read_result();
     nrf_delay_ms(100);
     //power_manage();
   }

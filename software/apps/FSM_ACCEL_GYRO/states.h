@@ -4,9 +4,9 @@
 
 typedef enum{
 	INIT = 0,	
-	OFF,
-	ON , 
-  	BLINK
+	OFF, 
+	ACCEL,
+	GYRO
 }state;
 
 
